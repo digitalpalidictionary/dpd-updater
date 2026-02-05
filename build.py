@@ -120,7 +120,7 @@ def build_windows() -> None:
     cmd.append(str(ENTRY_POINT))
     
     subprocess.run(cmd, check=True)
-    print(f"✓ Windows build complete: {DIST_DIR / 'DPD-Updater.exe'}")
+    print(f"[OK] Windows build complete: {DIST_DIR / 'DPD-Updater.exe'}")
 
 
 def build_macos() -> None:
@@ -150,7 +150,7 @@ def build_macos() -> None:
     cmd.append(str(ENTRY_POINT))
     
     subprocess.run(cmd, check=True)
-    print(f"✓ macOS build complete: {DIST_DIR / 'DPD Updater'}")
+    print(f"[OK] macOS build complete: {DIST_DIR / 'DPD Updater'}")
 
 
 def build_linux() -> None:
@@ -185,7 +185,7 @@ def build_linux() -> None:
     output_path = DIST_DIR / "dpd-updater"
     output_path.chmod(0o755)
     
-    print(f"✓ Linux build complete: {output_path}")
+    print(f"[OK] Linux build complete: {output_path}")
 
 
 def build_current_platform() -> None:
@@ -241,7 +241,7 @@ def main() -> None:
     else:
         build_current_platform()
     
-    print(f"\n✓ Build complete! Output in: {DIST_DIR}")
+    print(f"\n[OK] Build complete! Output in: {DIST_DIR}")
 
 
 if __name__ == "__main__":
