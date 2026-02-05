@@ -1,0 +1,4 @@
+flet>=0.28.3
+requests>=2.31.0
+packaging>=23.2
+psutil>=7.0.0

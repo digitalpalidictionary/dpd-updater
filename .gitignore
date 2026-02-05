@@ -1,0 +1,28 @@
+# Build directories
+build/
+dist/
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# PyInstaller
+*.spec
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
