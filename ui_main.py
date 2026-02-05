@@ -73,7 +73,6 @@ class MainWindow:
         # Header
         header = ft.Row(
             [
-                ft.Icon(ft.Icons.BOOK, size=40, color=ft.Colors.BLUE_400),
                 ft.Text("DPD Updater", size=32, weight=ft.FontWeight.BOLD),
             ]
         )

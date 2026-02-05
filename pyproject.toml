@@ -6,7 +6,7 @@ authors = [{ name = "bdhrs", email = "digitalpalidictionary@gmail.com" }]
 requires-python = ">=3.10"
 readme = "README.md"
 dependencies = [
-    "flet>=0.28.3",
+    "flet[all]==0.28.3",
     "requests>=2.31.0",
     "packaging>=23.2",
     "psutil>=7.0.0",

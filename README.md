@@ -59,9 +59,55 @@ The configuration file stores:
 - Auto-check preference (default: true)
 - Backup preference (default: true)
 
+## Build for Your Own OS
+
+Want to build the DPD Updater locally? It's easy!
+
+### Build Instructions
+
+1. **Install uv** (if not already installed):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **Navigate to the dpd-updater directory:**
+   ```bash
+   cd resources/dpd-updater
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   uv sync
+   ```
+
+4. **Build the executable:**
+   ```bash
+   uv run python build.py
+   ```
+
+That's it! The built executable will be in the `dist/` folder.
+
+### What You'll Get
+
+- **Windows**: `dist/DPD-Updater.exe`
+- **macOS**: `dist/DPD Updater.app`
+- **Linux**: `dist/dpd-updater`
+
+### Requirements
+
+- Python 3.10 or higher
+- Internet connection (for downloading dependencies)
+- About 100MB free space for the build
+
+### Troubleshooting
+
+**"Python not found"**: Install Python 3.10+ from [python.org](https://python.org)
+
+**Build fails**: Make sure you're in the `dpd-updater` directory (where `build.py` is located)
+
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions and development setup.
+For detailed development setup and architecture, see the source code structure below.
 
 ## Dependencies
 

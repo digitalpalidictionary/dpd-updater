@@ -10,7 +10,7 @@ from typing import Optional
 import requests
 from packaging.version import Version, InvalidVersion
 
-from dpd_updater import GITHUB_API_URL
+GITHUB_API_URL = "https://api.github.com/repos/digitalpalidictionary/dpd-db/releases/latest"
 
 
 @dataclass

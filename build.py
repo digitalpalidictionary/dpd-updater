@@ -29,11 +29,6 @@ ENTRY_POINT = UPDATER_DIR / "main.py"
 
 # Hidden imports (dependencies that PyInstaller might miss)
 HIDDEN_IMPORTS = [
-    "dpd_updater",
-    "flet",
-    "requests",
-    "packaging",
-    "psutil",
     "config",
     "github_client",
     "installer",
@@ -98,7 +93,6 @@ def build_windows() -> None:
     print("Building Windows executable...")
     
     icon_path = get_icon_path()
-    icon_arg = f"--icon={icon_path}" if icon_path else ""
     
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -110,6 +104,9 @@ def build_windows() -> None:
         f"--distpath={DIST_DIR}",
         f"--workpath={BUILD_DIR}",
         f"--specpath={BUILD_DIR}",
+        "--collect-all=flet",
+        "--collect-all=flet_desktop",
+        "--collect-all=flet_core",
     ]
     
     if icon_path:
@@ -140,6 +137,9 @@ def build_macos() -> None:
         f"--distpath={DIST_DIR}",
         f"--workpath={BUILD_DIR}",
         f"--specpath={BUILD_DIR}",
+        "--collect-all=flet",
+        "--collect-all=flet_desktop",
+        "--collect-all=flet_core",
     ]
     
     if icon_path:
@@ -170,6 +170,9 @@ def build_linux() -> None:
         f"--distpath={DIST_DIR}",
         f"--workpath={BUILD_DIR}",
         f"--specpath={BUILD_DIR}",
+        "--collect-all=flet",
+        "--collect-all=flet_desktop",
+        "--collect-all=flet_core",
     ]
     
     if icon_path:
