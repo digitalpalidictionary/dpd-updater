@@ -28,7 +28,7 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
           # Read current version from pyproject.toml
-          CURRENT=$(grep '^version = "' pyproject.toml | sed 's/version = "\([^"]*\)"/\1/')
+          CURRENT=$(grep '^version = "' pyproject.toml | sed 's/version = "\([^"]*\)"//')
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -68,21 +68,21 @@ jobs:
     needs: calculate-version
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false  # Continue other builds if one fails
+      fail-fast: false
       matrix:
         include:
           - platform: windows
             os: windows-latest
             artifact_name: dpd-updater-windows
-            asset_path: dist/DPD-Updater.exe
+            original_file: dist/DPD-Updater.exe
           - platform: macos
             os: macos-latest
-            artifact_name: dpd-updater-macos
-            asset_path: dist/DPD Updater
+            artifact_name: dpd-updater-mac
+            original_file: dist/DPD Updater.app
           - platform: linux
             os: ubuntu-latest
             artifact_name: dpd-updater-linux
-            asset_path: dist/dpd-updater
+            original_file: dist/dpd-updater
 
     steps:
       - name: Checkout code
@@ -98,8 +98,8 @@ jobs:
 
       - name: Set Version
         run: |
-          # Update pyproject.toml locally for the build using Python for cross-platform compatibility
-          python -c "import re; p='pyproject.toml'; c=open(p, encoding='utf-8').read(); open(p,'w', encoding='utf-8').write(re.sub(r'(?m)^version = \".*\"', 'version = \"${{ needs.calculate-version.outputs.version }}\"', c))"
+          # Cross-platform python one-liner to update version in pyproject.toml
+          python -c "import re; p='pyproject.toml'; c=open(p, encoding='utf-8').read(); open(p,'w', encoding='utf-8').write(re.sub(r'(?m)^version = ".*"', 'version = "${{ needs.calculate-version.outputs.version }}"', c))"
         shell: bash
 
       - name: Build Executable
@@ -107,24 +107,33 @@ jobs:
         run: |
           uv run python build.py --platform ${{ matrix.platform }}
 
-      - name: Zip macOS App
-        if: matrix.platform == 'macos'
+      - name: Rename Artifacts
+        shell: bash
         run: |
-          cd dist
-          zip -r "DPD Updater.app.zip" "DPD Updater.app"
-          rm -rf "DPD Updater.app"
+          VERSION="${{ needs.calculate-version.outputs.version }}"
+          
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            mv "dist/DPD-Updater.exe" "dist/dpd-updater-windows-$VERSION.exe"
+          elif [[ "${{ matrix.platform }}" == "linux" ]]; then
+            mv "dist/dpd-updater" "dist/dpd-updater-linux-$VERSION"
+          elif [[ "${{ matrix.platform }}" == "macos" ]]; then
+             # For macOS, zip the .app bundle
+            cd dist
+            zip -r "dpd-updater-mac-$VERSION.zip" "DPD Updater.app"
+            rm -rf "DPD Updater.app"
+          fi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/
+          path: dist/*
           if-no-files-found: warn
 
   release:
     name: Release
     needs: [calculate-version, build]
-    if: always()  # Run even if some builds failed
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -132,7 +141,6 @@ jobs:
     steps:
       - name: Check Dependencies
         run: |
-          # Check if calculate-version succeeded
           if [[ "${{ needs.calculate-version.result }}" != "success" ]]; then
             echo "Calculate version failed. Aborting."
             exit 1
@@ -148,18 +156,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: false # Keep folder structure
 
       - name: Verify Artifacts
         id: verify
         run: |
           if [ -z "$(ls -A artifacts)" ]; then
              echo "No artifacts found! All builds must have failed."
-             echo "Skipping release and commit."
              echo "proceed=false" >> $GITHUB_OUTPUT
-             exit 1 # Fail the job to indicate error
+             exit 1
           else
-             echo "Artifacts found. Proceeding with release."
+             echo "Artifacts found."
              echo "proceed=true" >> $GITHUB_OUTPUT
           fi
 
@@ -180,6 +186,6 @@ jobs:
           draft: true
           prerelease: false
           files: |
-            artifacts/dpd-updater-windows/DPD-Updater.exe
-            artifacts/dpd-updater-linux/dpd-updater
-            artifacts/dpd-updater-macos/DPD Updater.app.zip
+            artifacts/dpd-updater-windows/*.exe
+            artifacts/dpd-updater-linux/*
+            artifacts/dpd-updater-mac/*.zip
