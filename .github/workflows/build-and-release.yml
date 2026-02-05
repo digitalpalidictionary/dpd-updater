@@ -98,9 +98,8 @@ jobs:
 
       - name: Set Version
         run: |
-          # Update pyproject.toml locally for the build
-          # Use python to do cross-platform replacement if needed, but sed works in bash on all runners
-          sed -i 's/^version = ".*"/version = "${{ needs.calculate-version.outputs.version }}"/' pyproject.toml
+          # Update pyproject.toml locally for the build using Python for cross-platform compatibility
+          python -c "import re; p='pyproject.toml'; c=open(p, encoding='utf-8').read(); open(p,'w', encoding='utf-8').write(re.sub(r'(?m)^version = \".*\"', 'version = \"${{ needs.calculate-version.outputs.version }}\"', c))"
         shell: bash
 
       - name: Build Executable
