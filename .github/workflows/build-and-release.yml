@@ -24,8 +24,8 @@ jobs:
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-          # Read current version from pyproject.toml
-          CURRENT=$(grep 'version = "' pyproject.toml | sed 's/version = "\([^"]*\)"/\1/')
+          # Read current version from pyproject.toml (more robust parsing)
+          CURRENT=$(grep '^version = "' pyproject.toml | sed 's/version = "\([^"]*\)"/\1/')
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
         shell: bash
 
