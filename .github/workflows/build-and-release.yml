@@ -182,7 +182,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.calculate-version.outputs.tag }}
-          name: DPD Updater ${{ needs.calculate-version.outputs.version }}
+          name: DPD Updater v${{ needs.calculate-version.outputs.version }}
           draft: true
           prerelease: false
           files: |
