@@ -29,6 +29,7 @@ ENTRY_POINT = UPDATER_DIR / "main.py"
 
 # Hidden imports (dependencies that PyInstaller might miss)
 HIDDEN_IMPORTS = [
+    "dpd_updater",
     "flet",
     "requests",
     "packaging",
