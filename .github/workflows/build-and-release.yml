@@ -23,14 +23,12 @@ jobs:
 
       - name: Get Version Info
         id: version_info
-        working-directory: resources/dpd-updater
         run: |
           # Get latest tag
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
           # Read current version from pyproject.toml
-          # Look for 'version = "x.y.z"' line specifically
           CURRENT=$(grep '^version = "' pyproject.toml | sed 's/version = "\([^"]*\)"/\1/')
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
         shell: bash
@@ -61,7 +59,6 @@ jobs:
           elif [[ $CURRENT_MAJOR -eq $TAG_MAJOR ]] && [[ $CURRENT_MINOR -gt $TAG_MINOR ]]; then
             NEW_VERSION=$CURRENT_VERSION
           else
-            # No major/minor change, increment patch
             NEW_PATCH=$((TAG_PATCH + 1))
             NEW_VERSION="${TAG_MAJOR}.${TAG_MINOR}.${NEW_PATCH}"
           fi
@@ -71,16 +68,14 @@ jobs:
         shell: bash
 
       - name: Update pyproject.toml
-        working-directory: resources/dpd-updater
         run: |
-          # Safe replacement anchored to start of line
           sed -i 's/^version = ".*"/version = "${{ steps.next_version.outputs.version }}"/' pyproject.toml
 
       - name: Commit Version Bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add resources/dpd-updater/pyproject.toml
+          git add pyproject.toml
           git commit -m "Bump version to ${{ steps.next_version.outputs.version }}"
           git tag ${{ steps.next_version.outputs.tag }}
           git push origin HEAD
@@ -97,15 +92,15 @@ jobs:
           - platform: windows
             os: windows-latest
             artifact_name: dpd-updater-windows
-            asset_path: resources/dpd-updater/dist/DPD-Updater.exe
+            asset_path: dist/DPD-Updater.exe
           - platform: macos
             os: macos-latest
             artifact_name: dpd-updater-macos
-            asset_path: resources/dpd-updater/dist/DPD Updater
+            asset_path: dist/DPD Updater
           - platform: linux
             os: ubuntu-latest
             artifact_name: dpd-updater-linux
-            asset_path: resources/dpd-updater/dist/dpd-updater
+            asset_path: dist/dpd-updater
 
     steps:
       - name: Checkout code
@@ -118,20 +113,17 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: "resources/dpd-updater/uv.lock"
+          cache-dependency-glob: "uv.lock"
 
       - name: Build Executable
         shell: bash
         run: |
-          # uv run handles venv creation and dependency installation automatically
-          uv run --project resources/dpd-updater python resources/dpd-updater/build.py --platform ${{ matrix.platform }}
+          uv run python build.py --platform ${{ matrix.platform }}
 
-      # For macOS, we might need to zip the .app bundle (if it's a directory)
-      # PyInstaller --onefile on Mac produces a binary, but --windowed produces an .app bundle directory
       - name: Zip macOS App
         if: matrix.platform == 'macos'
         run: |
-          cd resources/dpd-updater/dist
+          cd dist
           zip -r "DPD Updater.app.zip" "DPD Updater.app"
           rm -rf "DPD Updater.app"
 
@@ -139,7 +131,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: resources/dpd-updater/dist/
+          path: dist/
           if-no-files-found: error
 
   release:
