@@ -28,7 +28,7 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
           # Read current version from pyproject.toml
-          CURRENT=$(grep '^version = "' pyproject.toml | sed 's/version = "\([^"]*\)"//')
+          CURRENT=$(grep '^version = "' pyproject.toml | sed 's/version = "\([^"]*\)"/\1/')
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -99,7 +99,7 @@ jobs:
       - name: Set Version
         run: |
           # Cross-platform python one-liner to update version in pyproject.toml
-          python -c "import re; p='pyproject.toml'; c=open(p, encoding='utf-8').read(); open(p,'w', encoding='utf-8').write(re.sub(r'(?m)^version = ".*"', 'version = "${{ needs.calculate-version.outputs.version }}"', c))"
+          python -c "import re; p='pyproject.toml'; c=open(p, encoding='utf-8').read(); open(p,'w', encoding='utf-8').write(re.sub(r'(?m)^version = \".*\"', 'version = \"${{ needs.calculate-version.outputs.version }}\"', c))"
         shell: bash
 
       - name: Build Executable
