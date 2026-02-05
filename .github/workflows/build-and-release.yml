@@ -3,13 +3,17 @@ name: Build & Release
 on:
   workflow_dispatch:
 
-jobs:
-  build-and-release:
-    name: Build All Platforms & Create Draft Release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+permissions:
+  contents: write
 
+jobs:
+  bump-version:
+    name: Bump Version & Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.next_version.outputs.version }}
+      tag: ${{ steps.next_version.outputs.tag }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,12 +23,14 @@ jobs:
 
       - name: Get Version Info
         id: version_info
+        working-directory: resources/dpd-updater
         run: |
           # Get latest tag
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-          # Read current version from pyproject.toml (more robust parsing)
+          # Read current version from pyproject.toml
+          # Look for 'version = "x.y.z"' line specifically
           CURRENT=$(grep '^version = "' pyproject.toml | sed 's/version = "\([^"]*\)"/\1/')
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
         shell: bash
@@ -51,10 +57,8 @@ jobs:
 
           # Check if version was manually bumped (major/minor change)
           if [[ $CURRENT_MAJOR -gt $TAG_MAJOR ]]; then
-            # Major version bumped manually, use current version
             NEW_VERSION=$CURRENT_VERSION
           elif [[ $CURRENT_MAJOR -eq $TAG_MAJOR ]] && [[ $CURRENT_MINOR -gt $TAG_MINOR ]]; then
-            # Minor version bumped manually, use current version
             NEW_VERSION=$CURRENT_VERSION
           else
             # No major/minor change, increment patch
@@ -67,76 +71,98 @@ jobs:
         shell: bash
 
       - name: Update pyproject.toml
+        working-directory: resources/dpd-updater
         run: |
-          sed -i 's/version = ".*"/version = "${{ steps.next_version.outputs.version }}"/' pyproject.toml
+          # Safe replacement anchored to start of line
+          sed -i 's/^version = ".*"/version = "${{ steps.next_version.outputs.version }}"/' pyproject.toml
 
       - name: Commit Version Bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
+          git add resources/dpd-updater/pyproject.toml
           git commit -m "Bump version to ${{ steps.next_version.outputs.version }}"
           git tag ${{ steps.next_version.outputs.tag }}
-          git push origin main
+          git push origin HEAD
           git push origin ${{ steps.next_version.outputs.tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: bump-version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            artifact_name: dpd-updater-windows
+            asset_path: resources/dpd-updater/dist/DPD-Updater.exe
+          - platform: macos
+            os: macos-latest
+            artifact_name: dpd-updater-macos
+            asset_path: resources/dpd-updater/dist/DPD Updater
+          - platform: linux
+            os: ubuntu-latest
+            artifact_name: dpd-updater-linux
+            asset_path: resources/dpd-updater/dist/dpd-updater
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          python-version: '3.13'
+          ref: ${{ needs.bump-version.outputs.tag }}
+          fetch-depth: 0
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "resources/dpd-updater/uv.lock"
 
-      - name: Install dependencies
+      - name: Build Executable
+        shell: bash
         run: |
-          uv pip install -r requirements.txt
+          # uv run handles venv creation and dependency installation automatically
+          uv run --project resources/dpd-updater python resources/dpd-updater/build.py --platform ${{ matrix.platform }}
 
-      - name: Build Windows
+      # For macOS, we might need to zip the .app bundle (if it's a directory)
+      # PyInstaller --onefile on Mac produces a binary, but --windowed produces an .app bundle directory
+      - name: Zip macOS App
+        if: matrix.platform == 'macos'
         run: |
-          uv pip install pyinstaller==6.18.0
-          python build.py --platform windows
+          cd resources/dpd-updater/dist
+          zip -r "DPD Updater.app.zip" "DPD Updater.app"
+          rm -rf "DPD Updater.app"
 
-      - name: Build macOS
-        run: |
-          python build.py --platform macos
-
-      - name: Build Linux
-        run: |
-          python build.py --platform linux
-
-      - name: Upload Windows artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dpd-updater-windows
-          path: dist/
+          name: ${{ matrix.artifact_name }}
+          path: resources/dpd-updater/dist/
+          if-no-files-found: error
 
-      - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
+  release:
+    name: Create Release
+    needs: [bump-version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: dpd-updater-macos
-          path: dist/
+          path: artifacts
 
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
+      - name: Display Artifacts
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: dpd-updater-linux
-          path: dist/
-
-      - name: Create Draft Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.next_version.outputs.tag }}
-          name: DPD Updater ${{ steps.next_version.outputs.version }}
-          body: |
-            ## ${{ steps.next_version.outputs.version }}
-
-            Download the executable for your platform from the Actions tab.
-
+          tag_name: ${{ needs.bump-version.outputs.tag }}
+          name: DPD Updater ${{ needs.bump-version.outputs.version }}
           draft: true
           prerelease: false
+          files: |
+            artifacts/dpd-updater-windows/DPD-Updater.exe
+            artifacts/dpd-updater-linux/dpd-updater
+            artifacts/dpd-updater-macos/DPD Updater.app.zip
