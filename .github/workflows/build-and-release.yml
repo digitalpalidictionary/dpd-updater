@@ -105,7 +105,7 @@ jobs:
       - name: Build Executable
         shell: bash
         run: |
-          uv run python build.py --platform ${{ matrix.platform }}
+          uv run --group dev python build.py --platform ${{ matrix.platform }}
 
       - name: Rename Artifacts
         shell: bash
